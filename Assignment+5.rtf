@@ -1,0 +1,108 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1265\cocoasubrtf210
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+\margl1440\margr1440\vieww12240\viewh15840\viewkind1
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+
+\f0\b\fs24 \cf0 Overview:
+\b0 \
+This will be a chat program in TCP, but it will be kind of complicated.\
+\
+Since everyone has converged on the use of Python, this makes some things simpler, and so details of implementation in Python will be provided.\
+\
+The end-user will not need to know anything about IP addresses or port numbers. Instead, the end-user will be presented with a list of names of people available for chat on the local network, and then will choose which one, and then will have a one-on-one TCP chat with that person.\
+\
+Since you will necessarily be testing this out with your classmates (likely multiple ones) it is expected that you will help and support each other. However, direct copying of code is considered academic dishonesty. If you in any way feel like your code may be suspiciously too similar to another user\'92s code, please provide some comments in your code indicating who you consulted with, and who you shared code with, so that I can know that you\'92re not trying to intentionally mislead me regarding the origins of your code.\
+	If you choose to effectively do this as a team, then all team members must submit identical code and must all demo at the same time. The grading on teams will be harsher than the grading on individuals.\
+\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+
+\b \cf0 Error handling:
+\b0 \
+You need to catch all reasonable errors: for example, if two people try to chat with the same person at the same time, it should work with one person and timeout with another.\
+\
+
+\b Useful utilities:
+\b0 \
+You\'92ll want to use the .settimeout method of sockets. Depending on your preference, there are various ways of trying to timeout when doing a read from the user in Python - I encourage you to consult stackoverflow on that one.\
+\
+
+\b Anticipated python imports:
+\b0 \
+	configparser # or json or similar\
+	struct\
+	socket\
+	# and possibly others as needed/desired\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+\cf0 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+
+\b \cf0 Eventually:
+\b0 \
+Eventually we\'92ll figure out how to do all this in one program instead of two, but I didn\'92t want to mandate a GUI or threads or anything like that.\
+\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+
+\b \cf0 \
+\
+\
+\
+\
+Setup:
+\b0 \
+First, multicast UDP will be used as a way to get name information. It will go as follows:\
+\
+Use:\
+	import configparser # you may use something else, such as import json, if you prefer\
+\
+Then, in the config file, specify the multicast group IP address, the multicast port number, and the time-to-live (TTL) values that you'll be using when you connect to the multicast group. It will also have your name in it too, as well as the TCP port number that you expect to be able to listen on and to have others connect to.\
+\
+Next, use:\
+	import struct\
+\
+Even though it adds more steps, and you could instead pickle the Python data, using it is good practice because you will often be communicating with other network entities that aren't written in the same language that you're using.\
+\
+
+\b Server:
+\b0 \
+The server will be available for chat, and if you chat with anyone that attempts to chat with you, it will be because they communicated with your server. Here is pseudocode for your server:\
+	loop 1:\
+		send out a multicast packet that has your name and a TCP port number that it is listening on (the receiver will infer the IP address as the IP address that the packet was sent from), \
+		block waiting for a connection on a TCP listening socket\
+		timeout from the wait after one second and repeat the loop\
+	after the connection was made:\
+		loop 2:\
+			block waiting for data to arrive over TCP\
+			either receive data and print to screen\
+				or timeout and don\'92t print anything\
+			block waiting for user to provide some input to send\
+			either get user input and then transmit over TCP\
+				or timeout and don\'92t send anything over TCP\
+			if an operation in the TCP socket results in an error (because it is closed) or if the user enters a special command that indicates that they want to close the connection, then close it and exit this loop and return and resume execution of loop 1\
+\
+That is the pseudocode for the server. I tried to be complete, but I may have left out some details\
+\
+
+\b \
+Client:
+\b0 \
+The client will listen on the multicast group IP address and port number until a few seconds have gone by and no new name has been transmitted. As it received packets it will create a data structure of some sort (a list or dictionary would be good) that has the following information in each item:\
+	name of other person\
+	ip address that their name information packet came from\
+	TCP port number that they provided in their name information packet\
+Once this data seems to be stable, or after some reasonable duration, you should then present to the user a list of people\'92s names and provide the user with a way to indicate which one they want to chat with (one option might be to number each name and then have the user type in the number of the person that they want to chat with - another option might be to have the user type in a unique leading substring of a name, which would require some fancier string comparison on your part but would require less mental effort on the user\'92s part).\
+	Once the user has chosen who they want to chat with, your program then looks up their name in that data structure and retrieves the IP address (the sending one, _not_ the multicast group) and the TCP port number, and establishes a connection to there.\
+	The actual chat over the TCP connection should be essentially the same as loop 2 of the server. TCP chat is TCP chat, regardless of which side of the TCP chat side you\'92re on.\
+\
+\
+
+\b Additional features:
+\b0 \
+	You\'92re welcome to implement and use any additional features in this chat program as you see fit. You just have to make sure that the core functionality works. Additional chat features that you may want to consider would be:\
+	* group chat (essentially, allowing continued use of the multicast group chat that you did in the previous assignment)\
+	* providing a GUI of some sort\
+	* dynamically updating the display of usernames in the person-to-chat-with selection tool\
+	* logging chats to a chat log file\
+	* blocking users by name or by IP\
+	* spam protection (if content transmitted exceeds a certain amount in a certain period of time, wait a period of time before displaying any additional content from that person, and inform the user of as much)\
+}
